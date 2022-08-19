@@ -47,16 +47,16 @@ std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
   return server;
 }
 
-int Server::client() {
+int Server::client(std::string *error) {
+  int32_t s;
   socklen_t addrlen;
   struct sockaddr_in addr;
-  int s0 = accept(s_, (struct sockaddr *)&addr, &addrlen);
-  std::cout << s0 << "\n";
-  if (s0 == -1 && errno != EINTR) {
-    kill(0, SIGINT);
-    exit(1);
-  }
-  return s0;
+  while ((s = accept(s_, (struct sockaddr *)&addr, &addrlen)) == -1)
+    if (errno != EINTR) {
+      *error = std::string(strerror(errno));
+      return -1;
+    }
+  return s;
 }
 
 Server::~Server() { close(s_); }

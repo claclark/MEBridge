@@ -2,6 +2,7 @@
 #define MEBRIDGE_LIB_MARS_H_
 
 #include "lib/server.h"
+#include "lib/temps.h"
 
 namespace mars {
 constexpr uint16_t mars_port = 3829;

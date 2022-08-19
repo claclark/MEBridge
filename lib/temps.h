@@ -14,7 +14,7 @@ public:
   std::string temp();
   void remove(const std::string &temp);
 
-  ~Temps();
+  ~Temps(){};
   Temps(const Temps &) = delete;
   Temps &operator=(const Temps &) = delete;
   Temps(Temps &&) = delete;

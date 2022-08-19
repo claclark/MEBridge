@@ -10,7 +10,7 @@ namespace mars {
 class Server final {
 public:
   static std::shared_ptr<Server> make(uint16_t port, std::string *error);
-  int client();
+  int client(std::string *error);
 
   ~Server();
   Server(const Server &) = delete;
