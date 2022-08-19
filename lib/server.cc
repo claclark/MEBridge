@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <cstdint>
 #include <errno.h>
+#include <iostream>
 #include <memory>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -44,6 +45,18 @@ std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
   static std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server());
   server->s_ = s;
   return server;
+}
+
+int Server::client() {
+  socklen_t addrlen;
+  struct sockaddr_in addr;
+  int s0 = accept(s_, (struct sockaddr *)&addr, &addrlen);
+  std::cout << s0 << "\n";
+  if (s0 == -1 && errno != EINTR) {
+    kill(0, SIGINT);
+    exit(1);
+  }
+  return s0;
 }
 
 Server::~Server() { close(s_); }
