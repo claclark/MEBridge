@@ -15,7 +15,7 @@ std::shared_ptr<Temps> Temps::make(const std::string &directory,
   system(mkdir_command.c_str());
   std::string cleanup_command = "/bin/rm -f " + directory + "/temp.*";
   system(cleanup_command.c_str());
-  static std::shared_ptr<Temps> temps = std::shared_ptr<Temps>(new Temps());
+  std::shared_ptr<Temps> temps = std::shared_ptr<Temps>(new Temps());
   temps->directory_ = directory;
   temps->counter_ = 0;
   return temps;
