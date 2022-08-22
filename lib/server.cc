@@ -24,10 +24,55 @@
 
 namespace mars {
 
-std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
+namespace {
+
+bool allowed_address(const std::string &allowed_hostname,
+                     std::vector<struct sockaddr> *allowed_clients,
+                     std::string *error) {
+  struct addrinfo hints;
+  struct addrinfo *res;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  int status = getaddrinfo(allowed_hostname.c_str(), NULL, &hints, &res);
+  if (status != 0) {
+    *error = std::string(gai_strerror(status));
+    return false;
+  }
+  for (struct addrinfo *ai = res; ai != nullptr; ai = ai->ai_next) {
+    struct sockaddr sa;
+    memcpy(&sa, ai->ai_addr, ai->ai_addrlen);
+    allowed_clients->emplace_back(sa);
+  }
+  freeaddrinfo(res);
+  return true;
+}
+
+bool determine_allowed_clients(
+    const std::vector<std::string> &allowed_hostnames,
+    std::vector<struct sockaddr> *allowed_clients, std::string *error) {
+  if (!allowed_address("127.0.0.1", allowed_clients, error))
+    return false;
+  char buffer[256];
+  if (gethostname(buffer, sizeof(buffer)) == -1) {
+    *error = error_description();
+    return false;
+  }
+  std::string this_machine = std::string(buffer);
+  if (!allowed_address(this_machine, allowed_clients, error))
+    return false;
+  for (auto &allowed_hostname : allowed_hostnames)
+    if (!allowed_address(allowed_hostname, allowed_clients, error))
+      return false;
+  return true;
+}
+
+} // namespace
+
+std::shared_ptr<Server>
+Server::make(uint16_t port, const std::vector<std::string> &allowed_hostnames,
+             std::string *error) {
   int32_t s;
   struct sockaddr_in addr;
-
   if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     *error = error_description();
     return nullptr;
@@ -44,20 +89,39 @@ std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
     *error = error_description();
     return nullptr;
   }
-  static std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server());
+  std::vector<struct sockaddr> allowed_clients;
+  if (!determine_allowed_clients(allowed_hostnames, &allowed_clients, error))
+    return nullptr;
+  std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server());
   server->s_ = s;
+  server->allowed_clients_ = allowed_clients;
   return server;
 }
 
 int Server::client(std::string *error) {
-  int32_t s;
+  int32_t s = -1;
   socklen_t addrlen;
   struct sockaddr_in addr;
-  while ((s = accept(s_, (struct sockaddr *)&addr, &addrlen)) == -1)
-    if (errno != EINTR) {
-      *error = error_description();
-      return -1;
+  while (s == -1) {
+    addrlen = sizeof(struct sockaddr_in);
+    while ((s = accept(s_, (struct sockaddr *)&addr, &addrlen)) == -1)
+      if (errno != EINTR) {
+        *error = error_description();
+        return -1;
+      }
+    bool okay = false;
+    for (auto &ac : allowed_clients_)
+      if (memcmp(&addr.sin_addr.s_addr,
+                 &(*((struct sockaddr_in *)&ac)).sin_addr.s_addr,
+                 sizeof(addr.sin_addr.s_addr)) == 0) {
+        okay = true;
+        break;
+      }
+    if (!okay) {
+      close(s);
+      s = -1;
     }
+  }
   return s;
 }
 
@@ -90,4 +154,5 @@ int connect2server(const std::string &hostname, uint16_t port,
   }
   return s;
 }
+
 } // namespace mars

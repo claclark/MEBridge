@@ -33,5 +33,6 @@ int main(int argc, char **argv) {
     std::thread t(handle_client, client);
     t.detach();
   }
-  return 0;
+  std::cerr << error << "\n";
+  return 1;
 }
