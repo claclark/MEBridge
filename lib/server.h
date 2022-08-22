@@ -2,8 +2,8 @@
 #define MEBRIDGE_LIB_SERVER_H_
 
 #include <cstdint>
-#include <string>
 #include <memory>
+#include <string>
 
 namespace mars {
 
@@ -23,7 +23,8 @@ private:
   int32_t s_;
 };
 
-int connect(const std::string &hostname, uint16_t port);
+int connect2server(const std::string &hostname, uint16_t port,
+                   std::string *error);
 
 } // namespace mars
 #endif // MEBRIDGE_LIB_SERVER_H_
