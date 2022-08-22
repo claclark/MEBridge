@@ -16,6 +16,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "lib/misc.h"
+
 #ifndef INADDR_NONE
 #define INADDR_NONE 0xffffffff
 #endif
@@ -27,7 +29,7 @@ std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
   struct sockaddr_in addr;
 
   if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    *error = std::string(strerror(errno));
+    *error = error_description();
     return nullptr;
   }
   memset(&addr, '\0', sizeof(addr));
@@ -35,11 +37,11 @@ std::shared_ptr<Server> Server::make(uint16_t port, std::string *error) {
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   addr.sin_port = htons(port);
   if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-    *error = std::string(strerror(errno));
+    *error = error_description();
     return nullptr;
   }
   if (listen(s, 5) == -1) {
-    *error = std::string(strerror(errno));
+    *error = error_description();
     return nullptr;
   }
   static std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server());
@@ -53,11 +55,39 @@ int Server::client(std::string *error) {
   struct sockaddr_in addr;
   while ((s = accept(s_, (struct sockaddr *)&addr, &addrlen)) == -1)
     if (errno != EINTR) {
-      *error = std::string(strerror(errno));
+      *error = error_description();
       return -1;
     }
   return s;
 }
 
 Server::~Server() { close(s_); }
+
+int connect2server(const std::string &hostname, uint16_t port,
+                   std::string *error) {
+  int s;
+  struct sockaddr_in addr;
+  memset(&addr, '\0', sizeof(addr));
+  if ((addr.sin_addr.s_addr = inet_addr(hostname.c_str())) == INADDR_NONE) {
+    struct hostent *host;
+    if ((host = gethostbyname(hostname.c_str())) == NULL) {
+      *error = std::string("Invalid host name");
+      return -1;
+    }
+    addr.sin_family = host->h_addrtype;
+    memcpy(&addr.sin_addr.s_addr, host->h_addr, host->h_length);
+  } else {
+    addr.sin_family = AF_INET;
+  }
+  addr.sin_port = htons(port);
+  if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    *error = error_description();
+    return -1;
+  }
+  if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    *error = error_description();
+    return -1;
+  }
+  return s;
+}
 } // namespace mars

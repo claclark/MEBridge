@@ -19,7 +19,7 @@ std::shared_ptr<Transit> Transit::make(time_t (*arrival)(),
 }
 
 void Transit::send(const std::string &message) {
-  std::unique_lock<std::mutex> hold(lock_);
+  lock_.lock();
   transmitting_.emplace(Transmitting(message, arrival_()));
   lock_.unlock();
   condition_.notify_one();

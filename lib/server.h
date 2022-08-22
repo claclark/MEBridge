@@ -22,5 +22,8 @@ private:
   Server(){};
   int32_t s_;
 };
+
+int connect(const std::string &hostname, uint16_t port);
+
 } // namespace mars
 #endif // MEBRIDGE_LIB_SERVER_H_
