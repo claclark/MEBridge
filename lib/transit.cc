@@ -29,7 +29,8 @@ std::string Transit::receive() {
   Transmitting t;
   {
     std::unique_lock<std::mutex> l(lock_);
-    condition_.wait(l, [&] { return transmitting_.size() > 0; });
+    if (transmitting_.size() == 0)
+      condition_.wait(l, [&] { return transmitting_.size() > 0; });
     t = transmitting_.front();
     transmitting_.pop();
   }
